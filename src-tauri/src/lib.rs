@@ -8,6 +8,7 @@ mod notify;
 mod robocopy;
 mod scheduler;
 mod trashbox;
+mod vss;
 
 use commands::*;
 

@@ -343,17 +343,19 @@ function ExecutionHistory({
         <>
           <table className="hist-table">
             <colgroup>
-              <col style={{ width: "155px" }} />
+              <col style={{ width: "130px" }} />
               <col />
-              <col style={{ width: "80px" }} />
-              <col style={{ width: "80px" }} />
+              <col style={{ width: "68px" }} />
+              <col style={{ width: "64px" }} />
+              <col style={{ width: "64px" }} />
             </colgroup>
             <thead>
               <tr>
                 <th>日時</th>
                 <th>バックアップ先</th>
-                <th>結果</th>
-                <th></th>
+                <th style={{ textAlign: "right" }}>サイズ</th>
+                <th style={{ padding: "8px 8px" }}>結果</th>
+                <th style={{ padding: "8px 8px" }}></th>
               </tr>
             </thead>
             <tbody>
@@ -371,7 +373,10 @@ function ExecutionHistory({
                           {h.path}
                         </span>
                       </td>
-                      <td>
+                      <td style={{ textAlign: "right", fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--muted)", whiteSpace: "nowrap" }}>
+                        {h.size_label || "—"}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap", padding: "9px 8px" }}>
                         <span style={{
                           display: "inline-flex", alignItems: "center", padding: "2px 8px",
                           borderRadius: "99px", fontSize: "10px", fontWeight: 700,
@@ -381,7 +386,7 @@ function ExecutionHistory({
                           成功
                         </span>
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap", padding: "9px 8px" }}>
                         <button className="hist-detail-btn" onClick={() => handleDetail(h)}>
                           {isExpanded ? "✕" : "詳細"}
                         </button>
@@ -389,7 +394,7 @@ function ExecutionHistory({
                     </tr>
                     {isExpanded && expandedFiles && (
                       <tr key={`${rowKey}-files`} style={{ background: "var(--panel2)" }}>
-                        <td colSpan={4} style={{ padding: "8px 14px" }}>
+                        <td colSpan={5} style={{ padding: "8px 14px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             {expandedFiles.files.map((f) => {
                               const name = f.split("\\").pop() ?? f;

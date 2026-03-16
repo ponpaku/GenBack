@@ -43,6 +43,7 @@ export default function GlobalSettings() {
   };
 
   return (
+    <>
     <div className="page-view">
     <div className="page-inner">
       <div style={{ marginBottom: "28px" }}>
@@ -147,5 +148,6 @@ export default function GlobalSettings() {
     </div>
     </div>
     {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    </>
   );
 }

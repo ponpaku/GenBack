@@ -1,4 +1,4 @@
-import { useState, useCallback, useId, useRef } from "react";
+import { useState, useCallback, useId, useRef, type KeyboardEvent } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   saveProfile,
@@ -181,6 +181,144 @@ function RoboOptionRow({
           style={{ width: `${valueWidth}px`, marginLeft: "auto" }}
         />
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// TagInput: タグ形式の複数値入力（フィルタ設定などに使用）
+// ============================================================
+function TagInput({
+  tags,
+  onChange,
+  placeholder,
+  presets,
+  disabled,
+}: {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+  placeholder?: string;
+  presets?: { label: string; value: string }[];
+  disabled?: boolean;
+}) {
+  const [input, setInput] = useState("");
+
+  const addTag = (value: string) => {
+    const v = value.trim();
+    if (!v || tags.includes(v)) return;
+    onChange([...tags, v]);
+    setInput("");
+  };
+
+  const removeTag = (idx: number) => {
+    onChange(tags.filter((_, i) => i !== idx));
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      addTag(input);
+    } else if (e.key === "Backspace" && !input && tags.length > 0) {
+      removeTag(tags.length - 1);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      {presets && presets.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+          {presets.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              disabled={disabled || tags.includes(p.value)}
+              onClick={() => !disabled && addTag(p.value)}
+              style={{
+                fontSize: "10px",
+                padding: "2px 8px",
+                borderRadius: "99px",
+                border: "1px solid var(--border)",
+                background: tags.includes(p.value) ? "var(--panel2)" : "var(--panel)",
+                color: tags.includes(p.value) ? "var(--subtle)" : "var(--muted)",
+                cursor: disabled || tags.includes(p.value) ? "default" : "pointer",
+                opacity: disabled ? 0.5 : 1,
+              }}
+            >
+              + {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "4px",
+          padding: "6px 8px",
+          minHeight: "34px",
+          border: "1px solid var(--border)",
+          borderRadius: "8px",
+          background: "var(--input-bg)",
+          cursor: disabled ? "not-allowed" : "text",
+          opacity: disabled ? 0.5 : 1,
+        }}
+        onClick={() => !disabled && document.getElementById("tag-input-" + placeholder)?.focus()}
+      >
+        {tags.map((tag, i) => (
+          <span
+            key={i}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "3px",
+              padding: "1px 6px 1px 8px",
+              borderRadius: "99px",
+              fontSize: "11px",
+              fontFamily: "'JetBrains Mono', monospace",
+              background: "var(--panel2)",
+              border: "1px solid var(--border)",
+              color: "var(--text)",
+            }}
+          >
+            {tag}
+            {!disabled && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); removeTag(i); }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "0 1px", lineHeight: 1, color: "var(--subtle)",
+                  fontSize: "12px",
+                }}
+              >×</button>
+            )}
+          </span>
+        ))}
+        <input
+          id={"tag-input-" + placeholder}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => { if (input.trim()) addTag(input); }}
+          disabled={disabled}
+          placeholder={tags.length === 0 ? placeholder : ""}
+          style={{
+            flex: 1,
+            minWidth: "80px",
+            background: "none",
+            border: "none",
+            outline: "none",
+            fontSize: "11px",
+            fontFamily: "'JetBrains Mono', monospace",
+            color: "var(--text)",
+            padding: "1px 0",
+          }}
+        />
+      </div>
+      <div style={{ fontSize: "10px", color: "var(--subtle)" }}>
+        Enter またはスペースで追加 / × で削除
+      </div>
     </div>
   );
 }
@@ -751,6 +889,59 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
                 label="サイズ非表示"
                 tooltip={"ファイルサイズを表示しません（ログ肥大化を防ぐ）。"}
               />
+              {/* ── 機能1: コピー検証 ── */}
+              <RoboOptionRow
+                checked={config.robocopy.opt_checksum}
+                onToggle={(v) => update("robocopy", { opt_checksum: v })}
+                flag="/CHECKSUM"
+                label="チェックサム検証"
+                tooltip={"ファイルサイズではなく CRC チェックサムで差分を判定します。\n精度が上がりますが処理速度は低下します。"}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_b}
+                onToggle={(v) => update("robocopy", { opt_b: v })}
+                flag="/B"
+                label="バックアップモード"
+                tooltip={"SEBackupPrivilege を使用して ACL を無視してコピーします。\n管理者権限が必要です。VSS と組み合わせると効果的です。"}
+              />
+              {/* ── 機能3: 帯域制限 ── */}
+              <RoboOptionRow
+                checked={config.robocopy.opt_ipg_enabled}
+                onToggle={(v) => update("robocopy", { opt_ipg_enabled: v })}
+                flag="/IPG"
+                label="帯域制限（パケット間隔）"
+                tooltip={"パケット間の待機時間（ms）。NAS へのバックアップ時に\n他の通信への影響を軽減します。値が大きいほど低速になります。"}
+                value={String(config.robocopy.ipg_ms)}
+                onValueChange={(v) => update("robocopy", { ipg_ms: parseInt(v) || 0 })}
+                valueType="number"
+                valueWidth={70}
+              />
+              {config.robocopy.opt_ipg_enabled && (
+                <div style={{ paddingLeft: "28px", display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {([
+                    ["無制限", 0],
+                    ["高速 (5ms)", 5],
+                    ["中速 (20ms)", 20],
+                    ["低速 (50ms)", 50],
+                  ] as [string, number][]).map(([label, ms]) => (
+                    <button
+                      key={ms}
+                      type="button"
+                      onClick={() => update("robocopy", { ipg_ms: ms })}
+                      style={{
+                        fontSize: "10px", padding: "2px 8px",
+                        borderRadius: "99px",
+                        border: "1px solid var(--border)",
+                        background: config.robocopy.ipg_ms === ms ? "var(--accent)" : "var(--panel)",
+                        color: config.robocopy.ipg_ms === ms ? "#fff" : "var(--muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             {/* 追加フラグ */}
             <Accordion title="追加フラグ">
@@ -793,6 +984,159 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
                 />
               </FieldRow>
             </Accordion>
+          </div>
+        </div>
+
+        {/* ═══ 機能2: ファイルフィルタ ═══ */}
+        <div className="config-section">
+          <div className="config-section-header">
+            <SectionIcon>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+            </SectionIcon>
+            <span className="config-section-title">ファイルフィルタ</span>
+          </div>
+          <div className="config-section-body">
+            <FieldRow
+              label="除外ファイル"
+              flag="/XF"
+              tooltip={"指定パターンに一致するファイルをコピーから除外します。\nワイルドカード使用可（例: *.tmp *.log ~*）"}
+            >
+              <TagInput
+                tags={config.filter.exclude_files}
+                onChange={(tags) => update("filter", { exclude_files: tags })}
+                placeholder="*.tmp"
+                presets={[
+                  { label: "*.tmp", value: "*.tmp" },
+                  { label: "*.log", value: "*.log" },
+                  { label: "~*", value: "~*" },
+                  { label: "Thumbs.db", value: "Thumbs.db" },
+                  { label: ".DS_Store", value: ".DS_Store" },
+                  { label: "desktop.ini", value: "desktop.ini" },
+                ]}
+              />
+            </FieldRow>
+            <FieldRow
+              label="除外フォルダ"
+              flag="/XD"
+              tooltip={"指定名に一致するフォルダをコピーから除外します。\nパスまたはフォルダ名で指定（例: .git node_modules）"}
+            >
+              <TagInput
+                tags={config.filter.exclude_dirs}
+                onChange={(tags) => update("filter", { exclude_dirs: tags })}
+                placeholder=".git"
+                presets={[
+                  { label: ".git", value: ".git" },
+                  { label: "node_modules", value: "node_modules" },
+                  { label: "__pycache__", value: "__pycache__" },
+                  { label: ".svn", value: ".svn" },
+                  { label: "tmp", value: "tmp" },
+                ]}
+              />
+            </FieldRow>
+            <FieldRow
+              label="対象ファイル限定"
+              tooltip={"空の場合は全ファイルが対象です。\n指定した場合はそのパターンに一致するファイルのみコピーします。\n（Robocopy の第3引数として渡されます）"}
+              hint="空=全ファイル対象"
+            >
+              <TagInput
+                tags={config.filter.include_files}
+                onChange={(tags) => update("filter", { include_files: tags })}
+                placeholder="*.docx"
+                presets={[
+                  { label: "*.docx", value: "*.docx" },
+                  { label: "*.xlsx", value: "*.xlsx" },
+                  { label: "*.pdf", value: "*.pdf" },
+                  { label: "*.jpg", value: "*.jpg" },
+                ]}
+              />
+            </FieldRow>
+            <FieldRow
+              label="除外属性"
+              flag="/XA"
+              tooltip={"指定した属性を持つファイルを除外します。\nR=読み取り専用 A=アーカイブ S=システム H=隠しファイル\n例: SH で隠し+システムを除外"}
+              hint="例: SH（空=除外なし）"
+            >
+              <FieldInput
+                value={config.filter.exclude_attribs}
+                onChange={(e) => update("filter", { exclude_attribs: e.target.value.toUpperCase().replace(/[^RASHO]/g, "") })}
+                placeholder="SH"
+                style={{ width: "80px", textTransform: "uppercase" }}
+                maxLength={5}
+              />
+            </FieldRow>
+          </div>
+        </div>
+
+        {/* ═══ 機能4: VSS（ボリュームシャドウコピー） ═══ */}
+        <div className="config-section">
+          <div className="config-section-header">
+            <SectionIcon>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+                <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+                <circle cx="17" cy="17" r="3" fill="currentColor" opacity="0.3"/>
+                <path d="M16 17h2M17 16v2"/>
+              </svg>
+            </SectionIcon>
+            <span className="config-section-title">VSS スナップショット</span>
+          </div>
+          <div className="config-section-body">
+            <div className="toggle-row">
+              <div className="toggle-info">
+                <strong style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  VSS スナップショット経由でバックアップ
+                  <TooltipIcon text={"VSS（ボリュームシャドウコピー）はバックアップ開始時点のドライブの\n瞬間コピーを作成し、そこからファイルを読み取ります。\n\n・Outlook(.pst)、開いているExcel、DBなどロック中ファイルもコピー可能\n・バックアップ中にファイルが変わっても整合性が保たれる\n・Windows 標準機能のため追加ソフト不要\n・管理者権限が必要 / ローカルソースのみ対応\n\n動作フロー: バックアップ開始 → スナップショット作成 →\nRobocopy がスナップショット経由でコピー → スナップショット削除"} />
+                </strong>
+                <span>{config.source.kind === "local" ? "使用中・ロック中のファイルもコピー可能にします（要管理者権限）" : "ローカルソースのみ有効です"}</span>
+              </div>
+              <ToggleSwitch
+                id="vss-enabled"
+                checked={config.vss.enabled}
+                onChange={(v) => update("vss", { enabled: v })}
+                disabled={config.source.kind !== "local"}
+              />
+            </div>
+            {config.vss.enabled && config.source.kind === "local" && (
+              <div style={{
+                marginTop: "10px",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.3)",
+                fontSize: "11px",
+                lineHeight: "1.6",
+                color: "var(--muted)",
+                display: "flex",
+                gap: "8px",
+                alignItems: "flex-start",
+              }}>
+                <span style={{ color: "var(--amber)", fontSize: "14px", flexShrink: 0 }}>⚠</span>
+                <div>
+                  <strong style={{ color: "var(--text)" }}>注意事項</strong>
+                  <ul style={{ margin: "4px 0 0 0", paddingLeft: "14px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <li>Windows 管理者権限で実行する必要があります</li>
+                    <li>ソース各パスのバックアップ開始時にスナップショットを作成し、完了後に削除します</li>
+                    <li>スナップショット作成に失敗した場合は通常コピーで続行します</li>
+                    <li>NAS ソースには対応していません（自動で無効になります）</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+            {config.source.kind !== "local" && (
+              <div style={{
+                marginTop: "6px",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                background: "var(--panel2)",
+                fontSize: "11px",
+                color: "var(--subtle)",
+              }}>
+                コピー元種別が「ローカル」の場合のみ使用できます
+              </div>
+            )}
           </div>
         </div>
 

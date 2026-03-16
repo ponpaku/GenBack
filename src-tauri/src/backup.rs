@@ -61,6 +61,10 @@ pub struct DestStatus {
 pub struct HistoryEntry {
     pub timestamp: String,
     pub path: String,
+    /// バックアップデータの合計サイズ（バイト）。0 = 計算失敗 or ミラーモード
+    pub size_bytes: u64,
+    /// 人間が読めるサイズ文字列（例: "1.2 GB"）
+    pub size_label: String,
 }
 
 // ============================================================
@@ -207,6 +211,52 @@ pub fn latest_ts_in_data(dest: &Path) -> Option<String> {
         }
     }
     best
+}
+
+/// 指定タイムスタンプの世代データ合計サイズを計算する
+/// data/{label}/{timestamp}/ ディレクトリの合計ファイルサイズを返す
+pub fn calc_gen_size(dest: &Path, timestamp: &str) -> u64 {
+    let data_root = dest.join("data");
+    if !data_root.exists() {
+        return 0;
+    }
+    let mut total: u64 = 0;
+    let Ok(label_dirs) = std::fs::read_dir(&data_root) else { return 0 };
+    for label_entry in label_dirs.filter_map(|e| e.ok()) {
+        let gen_dir = label_entry.path().join(timestamp);
+        if gen_dir.is_dir() {
+            total += dir_size_bytes(&gen_dir);
+        }
+    }
+    total
+}
+
+fn dir_size_bytes(path: &Path) -> u64 {
+    walkdir::WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter_map(|e| e.metadata().ok())
+        .filter(|m| m.is_file())
+        .map(|m| m.len())
+        .sum()
+}
+
+/// バイト数を人間が読みやすい文字列に変換（例: "1.2 GB"）
+pub fn format_size(bytes: u64) -> String {
+    const GB: u64 = 1_073_741_824;
+    const MB: u64 = 1_048_576;
+    const KB: u64 = 1_024;
+    if bytes == 0 {
+        "—".to_string()
+    } else if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
+    }
 }
 
 pub fn get_dest_score(dest: &Path) -> Option<String> {
@@ -431,22 +481,45 @@ pub fn backup_to_dest(
 
         let src_path = build_src_path(config, &sp.path);
 
-        if !check_source_accessible(&dest_logger, &src_path) {
-            dest_logger.log("error", &format!("コピー元にアクセスできないため処理を中断しました: {}", src_path), true);
+        // VSS スナップショット（ローカルソースかつ VSS 有効時のみ）
+        let vss_mount = if config.vss.enabled && config.source.kind == "local" {
+            match crate::vss::mount_vss_snapshot(&dest_logger, &src_path) {
+                Ok(m) => Some(m),
+                Err(e) => {
+                    dest_logger.log("warn", &format!("VSS スナップショット作成失敗（通常コピーで続行）: {}", e), true);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let effective_src = vss_mount.as_ref()
+            .map(|m| m.mapped_src.clone())
+            .unwrap_or_else(|| src_path.clone());
+
+        if !check_source_accessible(&dest_logger, &effective_src) {
+            if let Some(ref m) = vss_mount { crate::vss::unmount_vss_snapshot(&dest_logger, m); }
+            dest_logger.log("error", &format!("コピー元にアクセスできないため処理を中断しました: {}", effective_src), true);
             log_skipped_shares(&dest_logger, &labels, idx, "コピー元エラー");
             dest_logger.log("section", "バックアップ中断", true);
             return BackupStatus::SourceError;
         }
 
-        let rc = match run_robocopy(&dest_logger, config, &src_path, &sp.label, &dst, &detail_log, nowdate) {
+        let rc = match run_robocopy(&dest_logger, config, &effective_src, &sp.label, &dst, &detail_log, nowdate) {
             Ok(code) => code,
             Err(e) => {
+                if let Some(ref m) = vss_mount { crate::vss::unmount_vss_snapshot(&dest_logger, m); }
                 dest_logger.log("error", &format!("Robocopy の実行に失敗しました: {}", e), true);
                 log_skipped_shares(&dest_logger, &labels, idx, "コピー元エラー");
                 dest_logger.log("section", "バックアップ中断", true);
                 return BackupStatus::SourceError;
             }
         };
+
+        // VSS アンマウント（Robocopy 完了後）
+        if let Some(ref m) = vss_mount {
+            crate::vss::unmount_vss_snapshot(&dest_logger, m);
+        }
 
         if rc >= 8 {
             dest_logger.log("error", &format!("Robocopy がエラーで終了したため処理を中断しました: {} (終了コード: {})", sp.label, rc), true);
@@ -458,7 +531,7 @@ pub fn backup_to_dest(
         if config.trashbox.enabled && config.source.kind == "nas" {
             if let Err(e) = cleanup_trashbox(
                 &dest_logger,
-                &src_path,
+                &src_path,  // trashbox は元のNASパスを使用（VSS不要）
                 &sp.label,
                 config.trashbox.retention_days,
                 &config.test_mode,

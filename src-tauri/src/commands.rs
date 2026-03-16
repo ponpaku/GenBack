@@ -259,6 +259,7 @@ pub fn get_backup_history(dest: String, profile: String) -> Result<Vec<HistoryEn
     }
     use regex::Regex;
     let re = Regex::new(r"^\d{8}__\d{4}$").unwrap();
+    let dest_path = std::path::Path::new(&dest);
     let mut entries: Vec<HistoryEntry> = std::fs::read_dir(&succ)
         .map_err(|e| e.to_string())?
         .filter_map(|e| {
@@ -267,9 +268,13 @@ pub fn get_backup_history(dest: String, profile: String) -> Result<Vec<HistoryEn
             if p.is_dir() {
                 let name = p.file_name()?.to_str()?.to_string();
                 if re.is_match(&name) {
+                    let size_bytes = crate::backup::calc_gen_size(dest_path, &name);
+                    let size_label = crate::backup::format_size(size_bytes);
                     return Some(HistoryEntry {
                         timestamp: name,
                         path: dest.clone(),
+                        size_bytes,
+                        size_label,
                     });
                 }
             }

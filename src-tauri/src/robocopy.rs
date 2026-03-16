@@ -36,6 +36,14 @@ pub fn run_robocopy(
         src.clone(),
         dst_dir.to_string_lossy().to_string(),
     ];
+
+    // 対象ファイル指定（Robocopy の第3引数群: src dst [file...] [opts]）
+    for spec in &config.filter.include_files {
+        let s = spec.trim();
+        if !s.is_empty() { args.push(s.to_string()); }
+    }
+
+    // Robocopy オプションフラグ
     if rc.opt_mir        { args.push("/MIR".to_string()); }
     if rc.opt_dcopy_enabled { args.push(format!("/DCOPY:{}", rc.opt_dcopy_val)); }
     if rc.opt_compress   { args.push("/COMPRESS".to_string()); }
@@ -46,6 +54,32 @@ pub fn run_robocopy(
     if rc.opt_mt_enabled { args.push(format!("/MT:{}", rc.threads)); }
     if rc.opt_r_enabled  { args.push(format!("/R:{}", rc.retry_count)); }
     if rc.opt_w_enabled  { args.push(format!("/W:{}", rc.retry_wait)); }
+    // 追加フラグ: 検証・バックアップモード・帯域制限
+    if rc.opt_checksum   { args.push("/CHECKSUM".to_string()); }
+    if rc.opt_b          { args.push("/B".to_string()); }
+    if rc.opt_ipg_enabled && rc.ipg_ms > 0 {
+        args.push(format!("/IPG:{}", rc.ipg_ms));
+    }
+    // フィルタ: 除外ファイル
+    if !config.filter.exclude_files.is_empty() {
+        args.push("/XF".to_string());
+        for f in &config.filter.exclude_files {
+            let f = f.trim();
+            if !f.is_empty() { args.push(f.to_string()); }
+        }
+    }
+    // フィルタ: 除外ディレクトリ
+    if !config.filter.exclude_dirs.is_empty() {
+        args.push("/XD".to_string());
+        for d in &config.filter.exclude_dirs {
+            let d = d.trim();
+            if !d.is_empty() { args.push(d.to_string()); }
+        }
+    }
+    // フィルタ: 除外属性
+    if !config.filter.exclude_attribs.trim().is_empty() {
+        args.push(format!("/XA:{}", config.filter.exclude_attribs.trim()));
+    }
     args.push(format!("/LOG+:{}", log_file.to_string_lossy()));
 
     for flag in &rc.extra_flags {

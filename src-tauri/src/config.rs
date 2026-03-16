@@ -15,6 +15,10 @@ pub struct Config {
     pub notification: NotificationConfig,
     pub shutdown: ShutdownConfig,
     pub test_mode: TestModeConfig,
+    #[serde(default)]
+    pub filter: FilterConfig,
+    #[serde(default)]
+    pub vss: VssConfig,
 }
 
 /// ソースパス（NAS: share名 / local: フルパス）とラベルのペア
@@ -119,6 +123,47 @@ pub struct RobocopyConfig {
     #[serde(default = "default_copy")]
     pub opt_copy_val: String,
     pub extra_flags: Vec<String>,
+    // --- 追加機能 ---
+    /// /CHECKSUM: ファイルサイズではなくCRCチェックサムで差分判定
+    #[serde(default)]
+    pub opt_checksum: bool,
+    /// /B: バックアップモード (SEBackupPrivilege でACLを無視してコピー)
+    #[serde(default)]
+    pub opt_b: bool,
+    /// /IPG: パケット間待機時間（帯域制限）
+    #[serde(default)]
+    pub opt_ipg_enabled: bool,
+    #[serde(default)]
+    pub ipg_ms: u32,
+}
+
+/// ファイルフィルタ設定 (/XF /XD /XA および include file spec)
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct FilterConfig {
+    /// 除外ファイルパターン → /XF (例: ["*.tmp", "*.log"])
+    #[serde(default)]
+    pub exclude_files: Vec<String>,
+    /// 除外ディレクトリ → /XD (例: [".git", "node_modules"])
+    #[serde(default)]
+    pub exclude_dirs: Vec<String>,
+    /// 対象ファイルパターン (空=全対象) → Robocopy の第3引数 (例: ["*.docx", "*.xlsx"])
+    #[serde(default)]
+    pub include_files: Vec<String>,
+    /// 除外属性 → /XA: (例: "SH" = 隠し+システム属性を除外)
+    #[serde(default)]
+    pub exclude_attribs: String,
+}
+
+/// VSS（ボリュームシャドウコピー）設定
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct VssConfig {
+    /// VSS スナップショット経由でバックアップ（ローカルソースのみ有効）
+    #[serde(default)]
+    pub enabled: bool,
+}
+
+impl Default for VssConfig {
+    fn default() -> Self { VssConfig { enabled: false } }
 }
 
 fn default_dcopy() -> String { "DAT".to_string() }
@@ -216,6 +261,10 @@ impl Default for Config {
                 opt_copy_enabled: true,
                 opt_copy_val: "DATS".to_string(),
                 extra_flags: vec![],
+                opt_checksum: false,
+                opt_b: false,
+                opt_ipg_enabled: false,
+                ipg_ms: 0,
             },
             notification: NotificationConfig {
                 discord: DiscordConfig {
@@ -238,6 +287,8 @@ impl Default for Config {
                 robocopy_lines: 10,
                 trashbox_lines: 5,
             },
+            filter: FilterConfig::default(),
+            vss: VssConfig::default(),
         }
     }
 }

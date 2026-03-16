@@ -57,6 +57,24 @@ export interface RobocopyConfig {
   opt_copy_enabled: boolean;
   opt_copy_val: string;
   extra_flags: string[];
+  // 追加機能
+  opt_checksum: boolean;
+  opt_b: boolean;
+  opt_ipg_enabled: boolean;
+  ipg_ms: number;
+}
+
+/** ファイルフィルタ設定 */
+export interface FilterConfig {
+  exclude_files: string[];
+  exclude_dirs: string[];
+  include_files: string[];
+  exclude_attribs: string;
+}
+
+/** VSS（ボリュームシャドウコピー）設定 */
+export interface VssConfig {
+  enabled: boolean;
 }
 
 export interface DiscordConfig {
@@ -94,6 +112,8 @@ export interface Config {
   notification: NotificationConfig;
   shutdown: ShutdownConfig;
   test_mode: TestModeConfig;
+  filter: FilterConfig;
+  vss: VssConfig;
 }
 
 export interface BackupState {
@@ -112,6 +132,8 @@ export interface DestStatus {
 export interface HistoryEntry {
   timestamp: string;
   path: string;
+  size_bytes: number;
+  size_label: string;
 }
 
 export interface LogEvent {

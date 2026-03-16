@@ -24,7 +24,7 @@
   --amber-bg:     #fffbeb;
   --act-bg:       #18181b;
   --act-border:   #27272a;
-  --act-text:     #a1a1aa;
+  --act-text:     #ededed;
   --act-active:   #3b82f6;
   /* legacy compat */
   --color-bg:           var(--bg);
@@ -144,7 +144,7 @@
   min-width: 52px;
   background: var(--act-bg);
   border-right: 1px solid var(--act-border);
-  box-shadow: 2px 0 8px rgba(0,0,0,0.35);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
