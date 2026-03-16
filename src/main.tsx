@@ -4,6 +4,8 @@ import App from "./App";
 import { ThemeProvider } from "./lib/theme";
 import "./index.css";
 
+document.addEventListener("contextmenu", (e) => e.preventDefault());
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>

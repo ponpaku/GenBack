@@ -24,7 +24,7 @@
   --amber-bg:     #fffbeb;
   --act-bg:       #18181b;
   --act-border:   #27272a;
-  --act-text:     #71717a;
+  --act-text:     #a1a1aa;
   --act-active:   #3b82f6;
   /* legacy compat */
   --color-bg:           var(--bg);
@@ -898,6 +898,134 @@
   transition: all 0.15s;
 }
 .btn-cancel:hover { background: var(--bg); }
+
+/* ============================================================
+   Tooltip
+   ============================================================ */
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: help;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+}
+.tooltip-popup {
+  position: fixed;
+  background: #18181b;
+  color: #e4e4e7;
+  padding: 7px 11px;
+  border-radius: 7px;
+  font-size: 11px;
+  max-width: 240px;
+  z-index: 9999;
+  transform: translateX(-50%) translateY(-100%);
+  line-height: 1.6;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  border: 1px solid #3f3f46;
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+/* ============================================================
+   Flag Code / Fixed Flag Tags
+   ============================================================ */
+.flag-code {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--accent);
+}
+.fixed-flag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fixed-flag-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+.fixed-flag-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ============================================================
+   Accordion
+   ============================================================ */
+.accordion {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.accordion-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--panel2);
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.accordion-btn:hover { background: var(--bg); }
+.accordion-body {
+  padding: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================================
+   Flag Reference Table
+   ============================================================ */
+.flag-ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.flag-ref-table th {
+  padding: 5px 10px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.flag-ref-table td {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  vertical-align: middle;
+}
+.flag-ref-table tbody tr:hover td { background: var(--bg); }
 
 /* ============================================================
    Page Views (Dashboard / Schedule / Settings)

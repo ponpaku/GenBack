@@ -1,4 +1,4 @@
-import { useState, useCallback, useId } from "react";
+import { useState, useCallback, useId, useRef } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   saveProfile,
@@ -14,6 +14,49 @@ import { Toast, Button } from "../ui";
 
 function SectionIcon({ children }: { children: React.ReactNode }) {
   return <span className="config-section-icon">{children}</span>;
+}
+
+function TooltipIcon({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const ref = useRef<HTMLSpanElement>(null);
+  return (
+    <>
+      <span
+        ref={ref}
+        className="tooltip-icon"
+        onMouseEnter={() => {
+          if (ref.current) {
+            const r = ref.current.getBoundingClientRect();
+            setPos({ x: r.left + r.width / 2, y: r.top - 8 });
+          }
+          setVisible(true);
+        }}
+        onMouseLeave={() => setVisible(false)}
+      >?</span>
+      {visible && (
+        <div className="tooltip-popup" style={{ left: pos.x, top: pos.y }}>
+          {text}
+        </div>
+      )}
+    </>
+  );
+}
+
+function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="accordion">
+      <button className="accordion-btn" onClick={() => setOpen(v => !v)}>
+        <span>{title}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }}>
+          <path d="M2 4l4 4 4-4"/>
+        </svg>
+      </button>
+      {open && <div className="accordion-body">{children}</div>}
+    </div>
+  );
 }
 
 function ToggleSwitch({
@@ -69,17 +112,25 @@ function ToggleRow({
 
 function FieldRow({
   label,
+  flag,
+  tooltip,
   hint,
   children,
 }: {
   label: string;
+  flag?: string;
+  tooltip?: string;
   hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="field-row">
       <div>
-        <div className="field-label">{label}</div>
+        <div className="field-label" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          {label}
+          {flag && <code className="flag-code">{flag}</code>}
+          {tooltip && <TooltipIcon text={tooltip} />}
+        </div>
         {hint && <div className="field-hint">{hint}</div>}
       </div>
       <div>{children}</div>
@@ -467,7 +518,7 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
           </div>
         </div>
 
-        {/* ═══ 世代管理 + Robocopy (2カラム) ═══ */}
+        {/* ═══ 世代管理 + ゴミ箱 (2カラム) ═══ */}
         <div className="config-2col">
           <div className="config-section" style={{ marginBottom: 0 }}>
             <div className="config-section-header">
@@ -495,34 +546,6 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
             <div className="config-section-header">
               <SectionIcon>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                </svg>
-              </SectionIcon>
-              <span className="config-section-title">Robocopy</span>
-            </div>
-            <div className="config-section-body">
-              <FieldRow label="スレッド (/MT)">
-                <FieldInput type="number" value={config.robocopy.threads} onChange={(e) => update("robocopy", { threads: parseInt(e.target.value) || 1 })} style={{ width: "80px" }} />
-              </FieldRow>
-              <FieldRow label="リトライ (/R)">
-                <FieldInput type="number" value={config.robocopy.retry_count} onChange={(e) => update("robocopy", { retry_count: parseInt(e.target.value) || 0 })} style={{ width: "80px" }} />
-              </FieldRow>
-              <FieldRow label="待機秒 (/W)">
-                <FieldInput type="number" value={config.robocopy.retry_wait} onChange={(e) => update("robocopy", { retry_wait: parseInt(e.target.value) || 0 })} style={{ width: "80px" }} />
-              </FieldRow>
-              <FieldRow label="追加フラグ" hint="スペース区切り">
-                <FieldInput value={config.robocopy.extra_flags.join(" ")} onChange={(e) => update("robocopy", { extra_flags: e.target.value.split(" ").map((s) => s.trim()).filter(Boolean) })} placeholder="/XD tmp /XF *.tmp" className="mono" />
-              </FieldRow>
-            </div>
-          </div>
-        </div>
-
-        {/* ═══ ゴミ箱 + Discord (2カラム) ═══ */}
-        <div className="config-2col">
-          <div className="config-section" style={{ marginBottom: 0 }}>
-            <div className="config-section-header">
-              <SectionIcon>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6l-1 14H6L5 6"/>
                   <path d="M10 11v6M14 11v6"/>
@@ -539,78 +562,169 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
               </FieldRow>
             </div>
           </div>
+        </div>
 
-          <div className="config-section" style={{ marginBottom: 0 }}>
-            <div className="config-section-header">
-              <SectionIcon>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-              </SectionIcon>
-              <span className="config-section-title">Discord 通知</span>
-            </div>
-            <div className="config-section-body">
-              <ToggleRow label="Webhook 通知を有効にする" checked={config.notification.discord.enabled} onChange={(v) => update("notification", { discord: { ...config.notification.discord, enabled: v } })} />
-              <div className="section-divider" />
-              <FieldRow label="Webhook URL">
-                <FieldInput value={config.notification.discord.webhook_url} onChange={(e) => update("notification", { discord: { ...config.notification.discord, webhook_url: e.target.value } })} placeholder="https://discord.com/api/webhooks/..." disabled={!config.notification.discord.enabled} className="mono" />
-              </FieldRow>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  className="btn-ghost-sm"
-                  style={{ fontSize: "12px" }}
-                  disabled={!config.notification.discord.enabled || !config.notification.discord.webhook_url || testingDiscord}
-                  onClick={async () => {
-                    setTestingDiscord(true);
-                    try {
-                      await testDiscord(config.notification.discord.webhook_url);
-                      showToast("テスト送信成功 ✅", "success");
-                    } catch (e) {
-                      showToast(`テスト送信失敗: ${e}`, "error");
-                    } finally {
-                      setTestingDiscord(false);
-                    }
-                  }}
-                >
-                  {testingDiscord ? (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}>
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                    </svg>
-                  ) : (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/>
-                    </svg>
-                  )}
-                  テスト送信
-                </button>
+        {/* ═══ Robocopy ═══ */}
+        <div className="config-section">
+          <div className="config-section-header">
+            <SectionIcon>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+            </SectionIcon>
+            <span className="config-section-title">Robocopy</span>
+          </div>
+          <div className="config-section-body">
+            {/* 適用済みオプション */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <span className="field-label">適用済みオプション</span>
+                <span style={{ fontSize: "10px", color: "var(--subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>常時有効</span>
               </div>
-              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+              <div className="fixed-flag-list">
                 {([
-                  ["notify_start", "開始時"],
-                  ["notify_end", "正常終了時"],
-                  ["notify_error", "エラー時"],
-                ] as const).map(([key, label]) => (
-                  <label key={key} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", cursor: "pointer", color: "var(--muted)" }}>
-                    <input
-                      type="checkbox"
-                      checked={config.notification.discord[key]}
-                      onChange={(e) => update("notification", { discord: { ...config.notification.discord, [key]: e.target.checked } })}
-                      disabled={!config.notification.discord.enabled}
-                    />
-                    {label}
-                  </label>
+                  ["/MIR",       "ミラーリング",     "コピー先をコピー元と完全同期。\nコピー元に存在しないファイルはコピー先から削除されます。"],
+                  ["/DCOPY:DAT", "ディレクトリ属性", "ディレクトリのデータ (D)・属性 (A)・タイムスタンプ (T) をコピー。"],
+                  ["/COMPRESS",  "ネットワーク圧縮", "ネットワーク転送時にデータを圧縮。転送速度が向上することがあります。"],
+                  ["/COPY:DATS", "ファイル属性",     "ファイルのデータ (D)・属性 (A)・タイムスタンプ (T)・セキュリティ (S) をコピー。"],
+                  ["/TEE",       "二重出力",         "ログファイルとコンソールの両方に出力します。"],
+                  ["/NP",        "進捗非表示",       "コピー進捗率を表示しません（ログ肥大化を防ぐ）。"],
+                  ["/NS",        "サイズ非表示",     "ファイルサイズを表示しません（ログ肥大化を防ぐ）。"],
+                ] as [string, string, string][]).map(([flag, label, tip]) => (
+                  <span key={flag} className="fixed-flag-tag">
+                    <code>{flag}</code>
+                    <span className="fixed-flag-label">{label}</span>
+                    <TooltipIcon text={tip} />
+                  </span>
                 ))}
               </div>
-              <FieldRow label="開始メッセージ">
-                <FieldInput value={config.notification.discord.start_message} onChange={(e) => update("notification", { discord: { ...config.notification.discord, start_message: e.target.value } })} disabled={!config.notification.discord.enabled || !config.notification.discord.notify_start} />
-              </FieldRow>
-              <FieldRow label="終了メッセージ">
-                <FieldInput value={config.notification.discord.end_message} onChange={(e) => update("notification", { discord: { ...config.notification.discord, end_message: e.target.value } })} disabled={!config.notification.discord.enabled || !config.notification.discord.notify_end} />
-              </FieldRow>
-              <FieldRow label="エラーメッセージ">
-                <FieldInput value={config.notification.discord.error_message} onChange={(e) => update("notification", { discord: { ...config.notification.discord, error_message: e.target.value } })} disabled={!config.notification.discord.enabled || !config.notification.discord.notify_error} />
-              </FieldRow>
             </div>
+            <div className="section-divider" />
+            {/* 基本設定 */}
+            <FieldRow label="スレッド数" flag="/MT" tooltip={"マルチスレッドコピーのスレッド数。\n値が大きいほど高速ですが CPU 負荷も増加します。\nデフォルト: 16"}>
+              <FieldInput type="number" value={config.robocopy.threads} onChange={(e) => update("robocopy", { threads: parseInt(e.target.value) || 1 })} style={{ width: "80px" }} />
+            </FieldRow>
+            <FieldRow label="リトライ回数" flag="/R" tooltip={"コピー失敗時のリトライ回数。\n0 を指定するとリトライしません。\nデフォルト: 3"}>
+              <FieldInput type="number" value={config.robocopy.retry_count} onChange={(e) => update("robocopy", { retry_count: parseInt(e.target.value) || 0 })} style={{ width: "80px" }} />
+            </FieldRow>
+            <FieldRow label="待機秒数" flag="/W" tooltip={"リトライまでの待機秒数。\n/R が 0 の場合は無効です。\nデフォルト: 5"}>
+              <FieldInput type="number" value={config.robocopy.retry_wait} onChange={(e) => update("robocopy", { retry_wait: parseInt(e.target.value) || 0 })} style={{ width: "80px" }} />
+            </FieldRow>
+            {/* 詳細設定アコーディオン */}
+            <Accordion title="詳細設定（追加フラグ）">
+              <div>
+                <div className="field-label" style={{ marginBottom: "8px" }}>よく使うオプション一覧</div>
+                <table className="flag-ref-table">
+                  <thead>
+                    <tr>
+                      <th>フラグ</th>
+                      <th>説明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {([
+                      ["/XD <dir>",     "指定ディレクトリを除外。例: /XD tmp .git node_modules"],
+                      ["/XF <pattern>", "指定パターンのファイルを除外。例: /XF *.tmp *.log"],
+                      ["/XA:SH",        "隠し属性・システム属性のファイルを除外"],
+                      ["/XJD",          "ジャンクションポイント（ディレクトリ）を除外"],
+                      ["/Z",            "再起動可能モード。ネットワーク障害に強くなるが低速"],
+                      ["/B",            "バックアップモード。管理者権限でACLを無視してコピー"],
+                      ["/FFT",          "FAT精度のタイムスタンプを使用。一部のNASで必要"],
+                      ["/IPG:N",        "ファイル間待機時間（ms）。帯域を制限したい場合に使用"],
+                      ["/MAXAGE:N",     "N日より古いファイルを除外"],
+                      ["/MAX:N",        "N バイト超のファイルを除外"],
+                    ] as [string, string][]).map(([flag, desc]) => (
+                      <tr key={flag}>
+                        <td><code className="flag-code">{flag}</code></td>
+                        <td>{desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <FieldRow label="追加フラグ" hint="スペース区切り（例: /XD tmp /XF *.tmp）">
+                <FieldInput
+                  value={config.robocopy.extra_flags.join(" ")}
+                  onChange={(e) => update("robocopy", { extra_flags: e.target.value.split(" ").map((s) => s.trim()).filter(Boolean) })}
+                  placeholder="/XD tmp /XF *.tmp"
+                  className="mono"
+                />
+              </FieldRow>
+            </Accordion>
+          </div>
+        </div>
+
+        {/* ═══ Discord 通知 ═══ */}
+        <div className="config-section">
+          <div className="config-section-header">
+            <SectionIcon>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </SectionIcon>
+            <span className="config-section-title">Discord 通知</span>
+          </div>
+          <div className="config-section-body">
+            <ToggleRow label="Webhook 通知を有効にする" checked={config.notification.discord.enabled} onChange={(v) => update("notification", { discord: { ...config.notification.discord, enabled: v } })} />
+            <div className="section-divider" />
+            <FieldRow label="Webhook URL">
+              <FieldInput value={config.notification.discord.webhook_url} onChange={(e) => update("notification", { discord: { ...config.notification.discord, webhook_url: e.target.value } })} placeholder="https://discord.com/api/webhooks/..." disabled={!config.notification.discord.enabled} className="mono" />
+            </FieldRow>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                className="btn-ghost-sm"
+                style={{ fontSize: "12px" }}
+                disabled={!config.notification.discord.enabled || !config.notification.discord.webhook_url || testingDiscord}
+                onClick={async () => {
+                  setTestingDiscord(true);
+                  try {
+                    await testDiscord(config.notification.discord.webhook_url);
+                    showToast("テスト送信成功 ✅", "success");
+                  } catch (e) {
+                    showToast(`テスト送信失敗: ${e}`, "error");
+                  } finally {
+                    setTestingDiscord(false);
+                  }
+                }}
+              >
+                {testingDiscord ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/>
+                  </svg>
+                )}
+                テスト送信
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+              {([
+                ["notify_start", "開始時"],
+                ["notify_end", "正常終了時"],
+                ["notify_error", "エラー時"],
+              ] as const).map(([key, label]) => (
+                <label key={key} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", cursor: "pointer", color: "var(--muted)" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.notification.discord[key]}
+                    onChange={(e) => update("notification", { discord: { ...config.notification.discord, [key]: e.target.checked } })}
+                    disabled={!config.notification.discord.enabled}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <FieldRow label="開始メッセージ">
+              <FieldInput value={config.notification.discord.start_message} onChange={(e) => update("notification", { discord: { ...config.notification.discord, start_message: e.target.value } })} disabled={!config.notification.discord.enabled || !config.notification.discord.notify_start} />
+            </FieldRow>
+            <FieldRow label="終了メッセージ">
+              <FieldInput value={config.notification.discord.end_message} onChange={(e) => update("notification", { discord: { ...config.notification.discord, end_message: e.target.value } })} disabled={!config.notification.discord.enabled || !config.notification.discord.notify_end} />
+            </FieldRow>
+            <FieldRow label="エラーメッセージ">
+              <FieldInput value={config.notification.discord.error_message} onChange={(e) => update("notification", { discord: { ...config.notification.discord, error_message: e.target.value } })} disabled={!config.notification.discord.enabled || !config.notification.discord.notify_error} />
+            </FieldRow>
           </div>
         </div>
 

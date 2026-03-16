@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import logoUrl from "./assets/logo.png";
 import Dashboard from "./pages/Dashboard";
 import ProfilesView from "./pages/ProfilesView";
 import Schedule from "./pages/Schedule";
@@ -87,9 +88,7 @@ export default function App() {
       <div className="titlebar">
         <div className="titlebar-title">
           <span className="titlebar-title-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
+            <img src={logoUrl} width="18" height="18" style={{ borderRadius: "4px", display: "block" }} />
           </span>
           GenBack
         </div>
