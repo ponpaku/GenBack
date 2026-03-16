@@ -1,20 +1,58 @@
+import { useState, useCallback } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
+import { exportAllProfiles, importAllProfiles } from "../lib/tauri";
 import { useTheme } from "../lib/theme";
-import { Card, SectionHeader } from "../components/ui";
+import { Card, SectionHeader, Toast } from "../components/ui";
 
 export default function GlobalSettings() {
   const { theme, toggle } = useTheme();
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const showToast = useCallback((message: string, type: "success" | "error" | "info" = "info") => {
+    setToast({ message, type });
+  }, []);
+
+  const handleExportAll = async () => {
+    const dir = await open({ directory: true, title: "エクスポート先フォルダを選択" });
+    if (!dir) return;
+    setExporting(true);
+    try {
+      const names = await exportAllProfiles(dir as string);
+      showToast(`${names.length} 件のプロファイルをエクスポートしました`, "success");
+    } catch (e) {
+      showToast(String(e), "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportAll = async () => {
+    const dir = await open({ directory: true, title: "インポート元フォルダを選択" });
+    if (!dir) return;
+    setImporting(true);
+    try {
+      const names = await importAllProfiles(dir as string);
+      showToast(`${names.length} 件のプロファイルをインポートしました`, "success");
+    } catch (e) {
+      showToast(String(e), "error");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <div className="page-view">
     <div className="page-inner">
       <div style={{ marginBottom: "28px" }}>
-        <h1 className="page-heading">グローバル設定</h1>
-        <p className="page-sub">アプリケーション全体の設定</p>
+        <h1 className="page-heading profile-anim-name">グローバル設定</h1>
+        <p className="page-sub profile-anim-badges">アプリケーション全体の設定</p>
       </div>
 
       <div className="space-y-1">
         <SectionHeader>外観</SectionHeader>
-        <Card>
+        <Card className="profile-anim-card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>テーマ</p>
@@ -48,7 +86,7 @@ export default function GlobalSettings() {
         </Card>
 
         <SectionHeader>プロファイル保存場所</SectionHeader>
-        <Card>
+        <Card className="profile-anim-card">
           <p className="text-xs font-mono-ja text-gray-500 dark:text-gray-400">
             %USERPROFILE%\.genback\profiles\
           </p>
@@ -57,8 +95,43 @@ export default function GlobalSettings() {
           </p>
         </Card>
 
+        <SectionHeader>プロファイルの一括管理</SectionHeader>
+        <Card className="profile-anim-card">
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div className="toggle-row">
+              <div className="toggle-info">
+                <strong>一括エクスポート</strong>
+                <span>全プロファイルを選択したフォルダに .toml ファイルとして書き出します</span>
+              </div>
+              <button
+                className="btn-ghost-sm"
+                onClick={handleExportAll}
+                disabled={exporting}
+                style={{ flexShrink: 0 }}
+              >
+                {exporting ? "処理中..." : "↓ Export All"}
+              </button>
+            </div>
+            <div style={{ height: "1px", background: "var(--border)" }} />
+            <div className="toggle-row">
+              <div className="toggle-info">
+                <strong>一括インポート</strong>
+                <span>選択したフォルダ内の全 .toml ファイルをプロファイルとして読み込みます（同名は上書き）</span>
+              </div>
+              <button
+                className="btn-ghost-sm"
+                onClick={handleImportAll}
+                disabled={importing}
+                style={{ flexShrink: 0 }}
+              >
+                {importing ? "処理中..." : "↑ Import All"}
+              </button>
+            </div>
+          </div>
+        </Card>
+
         <SectionHeader>バージョン情報</SectionHeader>
-        <Card>
+        <Card className="profile-anim-card">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span style={{ color: "var(--color-text-muted)" }}>GenBack</span>
@@ -73,5 +146,6 @@ export default function GlobalSettings() {
       </div>
     </div>
     </div>
+    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
   );
 }

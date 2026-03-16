@@ -29,6 +29,8 @@ pub fn run() {
             duplicate_profile,
             import_profile,
             export_profile,
+            export_all_profiles,
+            import_all_profiles,
             get_default_config,
             // Phase 2: バックアップ
             start_backup,

@@ -157,6 +157,8 @@ export const renameProfile = (oldName: string, newName: string) => invoke<boolea
 export const duplicateProfile = (name: string, newName: string) => invoke<void>("duplicate_profile", { name, newName });
 export const importProfile = (path: string) => invoke<string>("import_profile", { path });
 export const exportProfile = (name: string, path: string) => invoke<void>("export_profile", { name, path });
+export const exportAllProfiles = (destDir: string) => invoke<string[]>("export_all_profiles", { destDir });
+export const importAllProfiles = (srcDir: string) => invoke<string[]>("import_all_profiles", { srcDir });
 export const getDefaultConfig = () => invoke<Config>("get_default_config");
 
 // ============================================================

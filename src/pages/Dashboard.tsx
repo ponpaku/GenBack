@@ -47,11 +47,11 @@ export default function Dashboard({ onNavigateToProfile }: Props) {
         {/* ヘッダー */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "28px" }}>
           <div>
-            <h1 className="page-heading">Dashboard</h1>
-            <p className="page-sub">全プロファイルの状態概要</p>
+            <h1 className="page-heading profile-anim-name">Dashboard</h1>
+            <p className="page-sub profile-anim-badges">全プロファイルの状態概要</p>
           </div>
           <button
-            className="btn-ghost-sm"
+            className="btn-ghost-sm profile-anim-actions"
             onClick={refresh}
             disabled={loading}
             style={{ fontSize: "13px" }}
@@ -78,12 +78,12 @@ export default function Dashboard({ onNavigateToProfile }: Props) {
             {/* グローバル統計 */}
             <div className="section-title" style={{ marginTop: 0 }}>Summary</div>
             <div className="stats-row" style={{ marginBottom: "28px" }}>
-              <div className="stat-card">
+              <div className="stat-card profile-anim-card">
                 <div className="stat-label">プロファイル数</div>
                 <div className="stat-value stat-value--accent">{profiles.length}</div>
                 <div className="stat-sub">登録済み</div>
               </div>
-              <div className="stat-card">
+              <div className="stat-card profile-anim-card">
                 <div className="stat-label">正常なプロファイル</div>
                 <div className={`stat-value ${profilesOk === profiles.length && profiles.length > 0 ? "stat-value--accent" : ""}`}
                   style={{ color: profilesOk < profiles.length ? "var(--amber)" : undefined }}>
@@ -91,7 +91,7 @@ export default function Dashboard({ onNavigateToProfile }: Props) {
                 </div>
                 <div className="stat-sub">デスティネーション確認済み</div>
               </div>
-              <div className="stat-card">
+              <div className="stat-card profile-anim-card">
                 <div className="stat-label">利用可能なバックアップ先</div>
                 <div className={`stat-value`}
                   style={{ color: availableDests < totalDests ? "var(--amber)" : availableDests === 0 ? "var(--subtle)" : "var(--green)" }}>
@@ -122,6 +122,7 @@ export default function Dashboard({ onNavigateToProfile }: Props) {
                   return (
                     <div
                       key={profile}
+                      className="profile-anim-card"
                       onClick={() => onNavigateToProfile?.(profile)}
                       style={{
                         background: "var(--panel)",

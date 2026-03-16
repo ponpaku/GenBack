@@ -166,6 +166,18 @@ pub fn get_default_config() -> Config {
     Config::default()
 }
 
+/// 全プロファイルを指定フォルダへ一括エクスポート
+#[tauri::command]
+pub fn export_all_profiles(dest_dir: String) -> Result<Vec<String>, String> {
+    config::export_all_profiles(&dest_dir)
+}
+
+/// 指定フォルダ内の全 .toml を一括インポート
+#[tauri::command]
+pub fn import_all_profiles(src_dir: String) -> Result<Vec<String>, String> {
+    config::import_all_profiles(&src_dir)
+}
+
 // ============================================================
 // Phase 2: バックアップコマンド
 // ============================================================

@@ -417,6 +417,67 @@ pub fn rename_profile(old_name: &str, new_name: &str) -> Result<Vec<String>, Str
     Ok(vec![format!(r"\genback\{}", old_name)])
 }
 
+/// 全プロファイルを指定フォルダへエクスポートする
+/// 戻り値: エクスポートしたプロファイル名のリスト
+pub fn export_all_profiles(dest_dir: &str) -> Result<Vec<String>, String> {
+    let dir = profiles_dir();
+    let dest = std::path::Path::new(dest_dir);
+    if !dest.exists() {
+        return Err(format!("フォルダが存在しません: {}", dest_dir));
+    }
+    let names = list_profiles()?;
+    if names.is_empty() {
+        return Err("エクスポートするプロファイルがありません".to_string());
+    }
+    let mut exported = Vec::new();
+    let mut errors = Vec::new();
+    for name in &names {
+        let src = dir.join(format!("{}.toml", name));
+        let dst = dest.join(format!("{}.toml", name));
+        match std::fs::copy(&src, &dst) {
+            Ok(_) => exported.push(name.clone()),
+            Err(e) => errors.push(format!("'{}': {}", name, e)),
+        }
+    }
+    if exported.is_empty() {
+        return Err(format!("エクスポート失敗: {}", errors.join(", ")));
+    }
+    Ok(exported)
+}
+
+/// 指定フォルダ内の全 .toml ファイルをプロファイルとしてインポートする
+/// 既存の同名プロファイルは上書きされる
+/// 戻り値: インポートしたプロファイル名のリスト
+pub fn import_all_profiles(src_dir: &str) -> Result<Vec<String>, String> {
+    let src = std::path::Path::new(src_dir);
+    if !src.exists() {
+        return Err(format!("フォルダが存在しません: {}", src_dir));
+    }
+    let entries = std::fs::read_dir(src)
+        .map_err(|e| format!("フォルダ読み取り失敗: {}", e))?;
+    let toml_paths: Vec<std::path::PathBuf> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("toml"))
+        .collect();
+    if toml_paths.is_empty() {
+        return Err("フォルダ内に .toml ファイルが見つかりません".to_string());
+    }
+    let mut imported = Vec::new();
+    let mut errors = Vec::new();
+    for path in &toml_paths {
+        let path_str = path.to_string_lossy().to_string();
+        match import_profile(&path_str) {
+            Ok(name) => imported.push(name),
+            Err(e) => errors.push(e),
+        }
+    }
+    if imported.is_empty() {
+        return Err(format!("インポート失敗: {}", errors.join(", ")));
+    }
+    Ok(imported)
+}
+
 /// プロファイルを複製する（設定のみコピー、ログ/履歴は引き継がない）
 pub fn duplicate_profile(src_name: &str, new_name: &str) -> Result<(), String> {
     validate_profile_name(new_name)?;

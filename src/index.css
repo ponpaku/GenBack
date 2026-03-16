@@ -1118,6 +1118,10 @@
   .profile-anim-card:nth-child(2) { animation-delay:  90ms; }
   .profile-anim-card:nth-child(3) { animation-delay: 120ms; }
   .profile-anim-card:nth-child(4) { animation-delay: 148ms; }
+  .profile-anim-card:nth-child(5) { animation-delay: 172ms; }
+  .profile-anim-card:nth-child(6) { animation-delay: 192ms; }
+  .profile-anim-card:nth-child(7) { animation-delay: 210ms; }
+  .profile-anim-card:nth-child(8) { animation-delay: 226ms; }
 }
 
 /* ============================================================

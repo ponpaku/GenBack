@@ -159,10 +159,10 @@ export default function Schedule() {
     <div className="page-inner">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "28px" }}>
         <div>
-          <h1 className="page-heading">スケジュール</h1>
-          <p className="page-sub">Windows タスクスケジューラと連携して自動バックアップを設定します</p>
+          <h1 className="page-heading profile-anim-name">スケジュール</h1>
+          <p className="page-sub profile-anim-badges">Windows タスクスケジューラと連携して自動バックアップを設定します</p>
         </div>
-        <button className="btn-ghost-sm" onClick={refresh} disabled={loading} style={{ fontSize: "13px" }}>
+        <button className="btn-ghost-sm profile-anim-actions" onClick={refresh} disabled={loading} style={{ fontSize: "13px" }}>
           {loading ? <Spinner size="sm" /> : (
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
@@ -185,7 +185,7 @@ export default function Schedule() {
           <EmptyState icon="◷" title="スケジュールが登録されていません" description="下のフォームからスケジュールを追加できます" />
         </Card>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 mb-6 profile-anim-card">
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: "var(--color-surface)" }}>
@@ -207,7 +207,7 @@ export default function Schedule() {
 
       {/* 新規登録フォーム */}
       <div className="section-title">新規スケジュール登録</div>
-      <Card className="max-w-md">
+      <Card className="max-w-md profile-anim-card">
         <div className="space-y-3">
           <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
             <span className="text-sm text-gray-600 dark:text-gray-400">プロファイル</span>
