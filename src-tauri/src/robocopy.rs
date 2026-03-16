@@ -31,23 +31,24 @@ pub fn run_robocopy(
     let src = src_path.to_string();
     let log_file = detail_log_dir.join(format!("{}_{}.txt", nowdate, label));
 
+    let rc = &config.robocopy;
     let mut args: Vec<String> = vec![
         src.clone(),
         dst_dir.to_string_lossy().to_string(),
-        "/MIR".to_string(),
-        "/DCOPY:DAT".to_string(),
-        format!("/LOG+:{}", log_file.to_string_lossy()),
-        "/NP".to_string(),
-        "/NS".to_string(),
-        format!("/R:{}", config.robocopy.retry_count),
-        format!("/W:{}", config.robocopy.retry_wait),
-        "/COMPRESS".to_string(),
-        format!("/MT:{}", config.robocopy.threads),
-        "/TEE".to_string(),
-        "/COPY:DATS".to_string(),
     ];
+    if rc.opt_mir        { args.push("/MIR".to_string()); }
+    if rc.opt_dcopy_enabled { args.push(format!("/DCOPY:{}", rc.opt_dcopy_val)); }
+    if rc.opt_compress   { args.push("/COMPRESS".to_string()); }
+    if rc.opt_copy_enabled  { args.push(format!("/COPY:{}", rc.opt_copy_val)); }
+    if rc.opt_tee        { args.push("/TEE".to_string()); }
+    if rc.opt_np         { args.push("/NP".to_string()); }
+    if rc.opt_ns         { args.push("/NS".to_string()); }
+    if rc.opt_mt_enabled { args.push(format!("/MT:{}", rc.threads)); }
+    if rc.opt_r_enabled  { args.push(format!("/R:{}", rc.retry_count)); }
+    if rc.opt_w_enabled  { args.push(format!("/W:{}", rc.retry_wait)); }
+    args.push(format!("/LOG+:{}", log_file.to_string_lossy()));
 
-    for flag in &config.robocopy.extra_flags {
+    for flag in &rc.extra_flags {
         args.push(flag.clone());
     }
 

@@ -142,6 +142,49 @@ function FieldInput({ className, ...props }: React.InputHTMLAttributes<HTMLInput
   return <input className={`field-input${className ? ` ${className}` : ""}`} {...props} />;
 }
 
+function RoboOptionRow({
+  checked,
+  onToggle,
+  flag,
+  label,
+  tooltip,
+  value,
+  onValueChange,
+  valueType = "text",
+  valueWidth = 70,
+}: {
+  checked: boolean;
+  onToggle: (v: boolean) => void;
+  flag: string;
+  label: string;
+  tooltip?: string;
+  value?: string;
+  onValueChange?: (v: string) => void;
+  valueType?: string;
+  valueWidth?: number;
+}) {
+  const id = useId();
+  return (
+    <div className="robo-option-row">
+      <label className="robo-option-check" htmlFor={id}>
+        <input id={id} type="checkbox" checked={checked} onChange={(e) => onToggle(e.target.checked)} />
+      </label>
+      <code className="flag-code">{flag}</code>
+      <span className="robo-option-label">{label}</span>
+      {tooltip && <TooltipIcon text={tooltip} />}
+      {value !== undefined && onValueChange && (
+        <FieldInput
+          type={valueType}
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          disabled={!checked}
+          style={{ width: `${valueWidth}px`, marginLeft: "auto" }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ============================================================
 // Props
 // ============================================================
@@ -170,7 +213,7 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
   };
 
   const validateForSave = (): string | null => {
-    if (config.generations.keep < 1) return "世代数は1以上を指定してください";
+    if (!config.generations.mirror_mode && config.generations.keep < 1) return "世代数は1以上を指定してください";
     if (!["rotate", "simultaneous"].includes(config.destinations.mode))
       return "バックアップモードは rotate または simultaneous を指定してください";
     if (config.destinations.paths.length === 0) return "バックアップ先を最低1つ設定してください";
@@ -530,8 +573,55 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
               <span className="config-section-title">世代管理</span>
             </div>
             <div className="config-section-body">
-              <FieldRow label="保持世代数" hint="1以上">
-                <FieldInput type="number" value={config.generations.keep} onChange={(e) => update("generations", { keep: parseInt(e.target.value) || 1 })} style={{ width: "80px" }} />
+              <ToggleRow
+                label="直ミラーモード"
+                description="世代なし・バックアップ先へ直接ミラー"
+                checked={config.generations.mirror_mode}
+                onChange={(v) => update("generations", { mirror_mode: v })}
+              />
+              {config.generations.mirror_mode && (
+                <>
+                  <div style={{ display: "flex", gap: "6px", padding: "4px 0 6px 2px" }}>
+                    {([
+                      [false, "{label}/", `{dest}/{"{label}"}/ 配下にコピー（ラベルごとにフォルダ分け）`],
+                      [true,  "直下",     "{dest}/ のルート直下に直接コピー（ラベルなし）"],
+                    ] as [boolean, string, string][]).map(([flat, title, desc]) => (
+                      <div
+                        key={String(flat)}
+                        className={`mode-option${config.generations.mirror_flat === flat ? " mode-option--active" : ""}`}
+                        style={{ flex: 1 }}
+                        onClick={() => update("generations", { mirror_flat: flat })}
+                      >
+                        <div className="mode-option-title">{title}</div>
+                        <div className="mode-option-desc">{desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    margin: "0 0 2px",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    background: "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    display: "flex",
+                    gap: "7px",
+                    alignItems: "flex-start",
+                    fontSize: "11px",
+                    lineHeight: "1.5",
+                  }}>
+                    <span style={{ color: "var(--red)", fontSize: "13px", flexShrink: 0, marginTop: "1px" }}>⚠</span>
+                    <span style={{ color: "var(--muted)" }}>
+                      {config.generations.mirror_flat
+                        ? <><code style={{ fontFamily: "monospace", color: "var(--text)" }}>{"{dest}/"}</code> のルート直下に直接コピーします。</>
+                        : <><code style={{ fontFamily: "monospace", color: "var(--text)" }}>{"{dest}/{label}/"}</code> にコピーします。</>
+                      }
+                    </span>
+                  </div>
+                </>
+              )}
+              <div className="section-divider" />
+              <FieldRow label="保持世代数" hint={config.generations.mirror_mode ? "ミラーモード時は無効" : "1以上"}>
+                <FieldInput type="number" value={config.generations.keep} onChange={(e) => update("generations", { keep: parseInt(e.target.value) || 1 })} style={{ width: "80px" }} disabled={config.generations.mirror_mode} />
               </FieldRow>
               <FieldRow label="詳細ログ保持数">
                 <FieldInput type="number" value={config.generations.detail_log_keep} onChange={(e) => update("generations", { detail_log_keep: parseInt(e.target.value) || 1 })} style={{ width: "80px" }} />
@@ -575,43 +665,95 @@ export default function ConfigTab({ profileName, initialConfig, onSaved, onCance
             <span className="config-section-title">Robocopy</span>
           </div>
           <div className="config-section-body">
-            {/* 適用済みオプション */}
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                <span className="field-label">適用済みオプション</span>
-                <span style={{ fontSize: "10px", color: "var(--subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>常時有効</span>
-              </div>
-              <div className="fixed-flag-list">
-                {([
-                  ["/MIR",       "ミラーリング",     "コピー先をコピー元と完全同期。\nコピー元に存在しないファイルはコピー先から削除されます。"],
-                  ["/DCOPY:DAT", "ディレクトリ属性", "ディレクトリのデータ (D)・属性 (A)・タイムスタンプ (T) をコピー。"],
-                  ["/COMPRESS",  "ネットワーク圧縮", "ネットワーク転送時にデータを圧縮。転送速度が向上することがあります。"],
-                  ["/COPY:DATS", "ファイル属性",     "ファイルのデータ (D)・属性 (A)・タイムスタンプ (T)・セキュリティ (S) をコピー。"],
-                  ["/TEE",       "二重出力",         "ログファイルとコンソールの両方に出力します。"],
-                  ["/NP",        "進捗非表示",       "コピー進捗率を表示しません（ログ肥大化を防ぐ）。"],
-                  ["/NS",        "サイズ非表示",     "ファイルサイズを表示しません（ログ肥大化を防ぐ）。"],
-                ] as [string, string, string][]).map(([flag, label, tip]) => (
-                  <span key={flag} className="fixed-flag-tag">
-                    <code>{flag}</code>
-                    <span className="fixed-flag-label">{label}</span>
-                    <TooltipIcon text={tip} />
-                  </span>
-                ))}
-              </div>
+            <div className="robo-option-list">
+              <RoboOptionRow
+                checked={config.robocopy.opt_mir}
+                onToggle={(v) => update("robocopy", { opt_mir: v })}
+                flag="/MIR"
+                label="ミラーリング"
+                tooltip={"コピー先をコピー元と完全同期。\nコピー元に存在しないファイルはコピー先から削除されます。"}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_mt_enabled}
+                onToggle={(v) => update("robocopy", { opt_mt_enabled: v })}
+                flag="/MT"
+                label="スレッド数"
+                tooltip={"マルチスレッドコピーのスレッド数。\n値が大きいほど高速ですが CPU 負荷も増加します。\nデフォルト: 16"}
+                value={String(config.robocopy.threads)}
+                onValueChange={(v) => update("robocopy", { threads: parseInt(v) || 1 })}
+                valueType="number"
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_r_enabled}
+                onToggle={(v) => update("robocopy", { opt_r_enabled: v })}
+                flag="/R"
+                label="リトライ回数"
+                tooltip={"コピー失敗時のリトライ回数。\n0 を指定するとリトライしません。\nデフォルト: 3"}
+                value={String(config.robocopy.retry_count)}
+                onValueChange={(v) => update("robocopy", { retry_count: parseInt(v) || 0 })}
+                valueType="number"
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_w_enabled}
+                onToggle={(v) => update("robocopy", { opt_w_enabled: v })}
+                flag="/W"
+                label="待機秒数"
+                tooltip={"リトライまでの待機秒数。\n/R が 0 の場合は無効です。\nデフォルト: 5"}
+                value={String(config.robocopy.retry_wait)}
+                onValueChange={(v) => update("robocopy", { retry_wait: parseInt(v) || 0 })}
+                valueType="number"
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_dcopy_enabled}
+                onToggle={(v) => update("robocopy", { opt_dcopy_enabled: v })}
+                flag="/DCOPY"
+                label="ディレクトリ属性"
+                tooltip={"ディレクトリのコピー対象属性。\nD=データ A=属性 T=タイムスタンプ\nデフォルト: DAT"}
+                value={config.robocopy.opt_dcopy_val}
+                onValueChange={(v) => update("robocopy", { opt_dcopy_val: v })}
+                valueWidth={60}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_copy_enabled}
+                onToggle={(v) => update("robocopy", { opt_copy_enabled: v })}
+                flag="/COPY"
+                label="ファイル属性"
+                tooltip={"ファイルのコピー対象属性。\nD=データ A=属性 T=タイムスタンプ S=セキュリティ\nデフォルト: DATS"}
+                value={config.robocopy.opt_copy_val}
+                onValueChange={(v) => update("robocopy", { opt_copy_val: v })}
+                valueWidth={60}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_compress}
+                onToggle={(v) => update("robocopy", { opt_compress: v })}
+                flag="/COMPRESS"
+                label="ネットワーク圧縮"
+                tooltip={"ネットワーク転送時にデータを圧縮。\n転送速度が向上することがあります。"}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_tee}
+                onToggle={(v) => update("robocopy", { opt_tee: v })}
+                flag="/TEE"
+                label="二重出力"
+                tooltip={"ログファイルとコンソールの両方に出力します。"}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_np}
+                onToggle={(v) => update("robocopy", { opt_np: v })}
+                flag="/NP"
+                label="進捗非表示"
+                tooltip={"コピー進捗率を表示しません（ログ肥大化を防ぐ）。"}
+              />
+              <RoboOptionRow
+                checked={config.robocopy.opt_ns}
+                onToggle={(v) => update("robocopy", { opt_ns: v })}
+                flag="/NS"
+                label="サイズ非表示"
+                tooltip={"ファイルサイズを表示しません（ログ肥大化を防ぐ）。"}
+              />
             </div>
-            <div className="section-divider" />
-            {/* 基本設定 */}
-            <FieldRow label="スレッド数" flag="/MT" tooltip={"マルチスレッドコピーのスレッド数。\n値が大きいほど高速ですが CPU 負荷も増加します。\nデフォルト: 16"}>
-              <FieldInput type="number" value={config.robocopy.threads} onChange={(e) => update("robocopy", { threads: parseInt(e.target.value) || 1 })} style={{ width: "80px" }} />
-            </FieldRow>
-            <FieldRow label="リトライ回数" flag="/R" tooltip={"コピー失敗時のリトライ回数。\n0 を指定するとリトライしません。\nデフォルト: 3"}>
-              <FieldInput type="number" value={config.robocopy.retry_count} onChange={(e) => update("robocopy", { retry_count: parseInt(e.target.value) || 0 })} style={{ width: "80px" }} />
-            </FieldRow>
-            <FieldRow label="待機秒数" flag="/W" tooltip={"リトライまでの待機秒数。\n/R が 0 の場合は無効です。\nデフォルト: 5"}>
-              <FieldInput type="number" value={config.robocopy.retry_wait} onChange={(e) => update("robocopy", { retry_wait: parseInt(e.target.value) || 0 })} style={{ width: "80px" }} />
-            </FieldRow>
-            {/* 詳細設定アコーディオン */}
-            <Accordion title="詳細設定（追加フラグ）">
+            {/* 追加フラグ */}
+            <Accordion title="追加フラグ">
               <div>
                 <div className="field-label" style={{ marginBottom: "8px" }}>よく使うオプション一覧</div>
                 <table className="flag-ref-table">

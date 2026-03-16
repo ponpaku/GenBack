@@ -360,7 +360,6 @@ pub fn backup_to_dest(
     preamble: Option<&[String]>,
     cancel: &Arc<AtomicBool>,
 ) -> BackupStatus {
-    let data_dir = back.join("data");
     let back_log = back.join("log");
     let detail_log = back_log.join(format!("{}_detail", profile));
 
@@ -381,10 +380,14 @@ pub fn backup_to_dest(
 
     dest_logger.log("section", &format!("バックアップ開始: {}", back.display()), true);
 
-    if let Err(e) = std::fs::create_dir_all(&data_dir) {
-        dest_logger.log("error", &format!("データディレクトリの作成に失敗しました: {} ({})", data_dir.display(), e), true);
-        dest_logger.log("section", "バックアップ中断", true);
-        return BackupStatus::DestError;
+    // 通常モードのみ data/ ディレクトリを作成する
+    if !config.generations.mirror_mode {
+        let data_dir = back.join("data");
+        if let Err(e) = std::fs::create_dir_all(&data_dir) {
+            dest_logger.log("error", &format!("データディレクトリの作成に失敗しました: {} ({})", data_dir.display(), e), true);
+            dest_logger.log("section", "バックアップ中断", true);
+            return BackupStatus::DestError;
+        }
     }
 
     let labels: Vec<String> = config.source.paths.iter().map(|sp| sp.label.clone()).collect();
@@ -399,15 +402,26 @@ pub fn backup_to_dest(
 
         dest_logger.log("section", &format!("コピー開始: {} ({}/{})", sp.label, idx + 1, total), true);
 
-        let label_data_dir = data_dir.join(&sp.label);
-        if let Err(e) = rotate_generations(&dest_logger, &label_data_dir, nowdate, config.generations.keep) {
-            dest_logger.log("error", &format!("世代ローテーションに失敗しました: {} ({})", sp.label, e), true);
-            log_skipped_shares(&dest_logger, &labels, idx, "バックアップ先エラー");
-            dest_logger.log("section", "バックアップ中断", true);
-            return BackupStatus::DestError;
-        }
-
-        let dst = label_data_dir.join(nowdate);
+        let dst = if config.generations.mirror_mode {
+            if config.generations.mirror_flat {
+                // 直ミラー(フラット): バックアップ先ルート直下に直接コピー
+                dest_logger.log("info", &format!("直ミラー(フラット): {} → {}", sp.label, back.display()), true);
+                back.to_path_buf()
+            } else {
+                // 直ミラー(ラベル): バックアップ先直下の {label}/ にコピー
+                dest_logger.log("info", &format!("直ミラー(ラベル): {} → {}/{}", sp.label, back.display(), sp.label), true);
+                back.join(&sp.label)
+            }
+        } else {
+            let label_data_dir = back.join("data").join(&sp.label);
+            if let Err(e) = rotate_generations(&dest_logger, &label_data_dir, nowdate, config.generations.keep) {
+                dest_logger.log("error", &format!("世代ローテーションに失敗しました: {} ({})", sp.label, e), true);
+                log_skipped_shares(&dest_logger, &labels, idx, "バックアップ先エラー");
+                dest_logger.log("section", "バックアップ中断", true);
+                return BackupStatus::DestError;
+            }
+            label_data_dir.join(nowdate)
+        };
         if let Err(e) = std::fs::create_dir_all(&dst) {
             dest_logger.log("error", &format!("コピー先ディレクトリの作成に失敗しました: {} ({})", dst.display(), e), true);
             log_skipped_shares(&dest_logger, &labels, idx, "バックアップ先エラー");
@@ -489,7 +503,7 @@ pub async fn run_backup(
     if !["rotate", "simultaneous"].contains(&config.destinations.mode.as_str()) {
         return Err(format!("destinations.mode が無効です: {:?}", config.destinations.mode));
     }
-    if config.generations.keep < 1 {
+    if !config.generations.mirror_mode && config.generations.keep < 1 {
         return Err("generations.keep は 1 以上を指定してください".to_string());
     }
 
@@ -737,7 +751,7 @@ pub async fn run_backup_headless(
     if !["rotate", "simultaneous"].contains(&config.destinations.mode.as_str()) {
         return Err(format!("destinations.mode が無効です: {:?}", config.destinations.mode));
     }
-    if config.generations.keep < 1 {
+    if !config.generations.mirror_mode && config.generations.keep < 1 {
         return Err("generations.keep は 1 以上を指定してください".to_string());
     }
 

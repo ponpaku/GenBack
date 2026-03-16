@@ -72,6 +72,13 @@ pub struct GenerationsConfig {
     pub keep: u32,
     pub detail_log_keep: u32,
     pub success_history_keep: i32,
+    /// true = 世代なし完全ミラー（data/ フォルダを作らず直接コピー）
+    #[serde(default)]
+    pub mirror_mode: bool,
+    /// true = バックアップ先直下に直接コピー / false = {dest}/{label}/ 配下にコピー
+    /// mirror_mode が false の場合は無効
+    #[serde(default)]
+    pub mirror_flat: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -82,11 +89,40 @@ pub struct TrashboxConfig {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RobocopyConfig {
+    // bool-only flags (デフォルト有効)
+    #[serde(default = "default_true")]
+    pub opt_mir: bool,
+    #[serde(default = "default_true")]
+    pub opt_compress: bool,
+    #[serde(default = "default_true")]
+    pub opt_tee: bool,
+    #[serde(default = "default_true")]
+    pub opt_np: bool,
+    #[serde(default = "default_true")]
+    pub opt_ns: bool,
+    // value flags
+    #[serde(default = "default_true")]
+    pub opt_mt_enabled: bool,
     pub threads: u32,
+    #[serde(default = "default_true")]
+    pub opt_r_enabled: bool,
     pub retry_count: u32,
+    #[serde(default = "default_true")]
+    pub opt_w_enabled: bool,
     pub retry_wait: u32,
+    #[serde(default = "default_true")]
+    pub opt_dcopy_enabled: bool,
+    #[serde(default = "default_dcopy")]
+    pub opt_dcopy_val: String,
+    #[serde(default = "default_true")]
+    pub opt_copy_enabled: bool,
+    #[serde(default = "default_copy")]
+    pub opt_copy_val: String,
     pub extra_flags: Vec<String>,
 }
+
+fn default_dcopy() -> String { "DAT".to_string() }
+fn default_copy() -> String { "DATS".to_string() }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NotificationConfig {
@@ -156,15 +192,29 @@ impl Default for Config {
                 keep: 1,
                 detail_log_keep: 24,
                 success_history_keep: 30,
+                mirror_mode: false,
+                mirror_flat: false,
             },
             trashbox: TrashboxConfig {
                 enabled: true,
                 retention_days: 120,
             },
             robocopy: RobocopyConfig {
+                opt_mir: true,
+                opt_compress: true,
+                opt_tee: true,
+                opt_np: true,
+                opt_ns: true,
+                opt_mt_enabled: true,
                 threads: 16,
+                opt_r_enabled: true,
                 retry_count: 3,
+                opt_w_enabled: true,
                 retry_wait: 5,
+                opt_dcopy_enabled: true,
+                opt_dcopy_val: "DAT".to_string(),
+                opt_copy_enabled: true,
+                opt_copy_val: "DATS".to_string(),
                 extra_flags: vec![],
             },
             notification: NotificationConfig {

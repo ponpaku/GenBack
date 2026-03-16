@@ -68,7 +68,7 @@ fn validate_config(config: &Config) -> Result<(), String> {
             config.destinations.mode
         ));
     }
-    if config.generations.keep < 1 {
+    if !config.generations.mirror_mode && config.generations.keep < 1 {
         return Err("generations.keep は 1 以上を指定してください".to_string());
     }
     if config.destinations.paths.is_empty() {

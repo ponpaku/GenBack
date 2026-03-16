@@ -969,6 +969,31 @@
 }
 
 /* ============================================================
+   Robocopy option list
+   ============================================================ */
+.robo-option-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.robo-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.robo-option-row:last-child { border-bottom: none; }
+.robo-option-row:hover { background: var(--panel2); }
+.robo-option-check { display: flex; align-items: center; cursor: pointer; }
+.robo-option-check input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--accent); }
+.robo-option-label { color: var(--muted); flex: 1; }
+
+/* ============================================================
    Accordion
    ============================================================ */
 .accordion {

@@ -140,9 +140,18 @@ function StatsRow({
         <div className="stat-sub">{latestBackup ? "直近の実行日" : "未実行"}</div>
       </div>
       <div className="stat-card">
-        <div className="stat-label">保持世代数</div>
-        <div className="stat-value stat-value--accent">{config.generations.keep}</div>
-        <div className="stat-sub">世代</div>
+        <div className="stat-label">バックアップモード</div>
+        {config.generations.mirror_mode ? (
+          <>
+            <div className="stat-value stat-value--accent" style={{ fontSize: "16px" }}>直ミラー</div>
+            <div className="stat-sub">世代なし・直接同期</div>
+          </>
+        ) : (
+          <>
+            <div className="stat-value stat-value--accent">{config.generations.keep}</div>
+            <div className="stat-sub">世代保持</div>
+          </>
+        )}
       </div>
       <div className="stat-card">
         <div className="stat-label">次回実行</div>

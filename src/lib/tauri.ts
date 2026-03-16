@@ -31,6 +31,8 @@ export interface GenerationsConfig {
   keep: number;
   detail_log_keep: number;
   success_history_keep: number;
+  mirror_mode: boolean;
+  mirror_flat: boolean;
 }
 
 export interface TrashboxConfig {
@@ -39,9 +41,21 @@ export interface TrashboxConfig {
 }
 
 export interface RobocopyConfig {
+  opt_mir: boolean;
+  opt_compress: boolean;
+  opt_tee: boolean;
+  opt_np: boolean;
+  opt_ns: boolean;
+  opt_mt_enabled: boolean;
   threads: number;
+  opt_r_enabled: boolean;
   retry_count: number;
+  opt_w_enabled: boolean;
   retry_wait: number;
+  opt_dcopy_enabled: boolean;
+  opt_dcopy_val: string;
+  opt_copy_enabled: boolean;
+  opt_copy_val: string;
   extra_flags: string[];
 }
 
